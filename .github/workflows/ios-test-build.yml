@@ -3,7 +3,7 @@ name: Build Test IPA
 on:
   push:
     branches:
-      - build/ipa-20261006
+      - build/ipa-debug-20261006
   workflow_dispatch:
     inputs:
       configuration:
@@ -13,7 +13,7 @@ on:
         options:
           - Debug
           - Release
-        default: Release
+        default: Debug
 
 permissions:
   contents: read
@@ -24,13 +24,13 @@ concurrency:
 
 jobs:
   build:
-    name: Build unsigned full ${{ inputs.configuration || 'Release' }} IPA
+    name: Build unsigned full ${{ inputs.configuration || 'Debug' }} IPA
     runs-on: macos-26
-    timeout-minutes: ${{ (inputs.configuration || 'Release') == 'Release' && 75 || 30 }}
+    timeout-minutes: ${{ (inputs.configuration || 'Debug') == 'Release' && 75 || 30 }}
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
       GRADLE_OPTS: -Dfile.encoding=UTF-8
-      IOS_CONFIGURATION: ${{ inputs.configuration || 'Release' }}
+      IOS_CONFIGURATION: ${{ inputs.configuration || 'Debug' }}
       KOTLIN_DAEMON_JVMARGS: -Xmx2048M
       NUVIO_GRADLE_JVMARGS: -Xmx4608M -Dfile.encoding=UTF-8 -XX:MaxMetaspaceSize=768M
       NUVIO_KOTLIN_NATIVE_JVMARGS: -Xmx4608M
@@ -68,14 +68,14 @@ jobs:
             printf '%s' "${RELEASE_PROPERTIES_BASE64}" | base64 --decode > local.properties
           else
             touch local.properties
-            echo "::warning::Runtime properties secret is absent; authentication and API integrations will be unconfigured."
+            echo "::warning::Runtime properties secret is absent; using source defaults and user-configured integrations."
           fi
           sed -i '' -E '/^[[:space:]]*(sdk\.dir|NUVIO_RELEASE_STORE_FILE)[[:space:]]*=/d' local.properties
 
       - name: Prepare iOS dependencies
         run: ./scripts/prepare-ios-dependencies.sh
 
-      - name: Build unsigned full ${{ inputs.configuration || 'Release' }} IPA
+      - name: Build unsigned full ${{ inputs.configuration || 'Debug' }} IPA
         run: |
           (
             while sleep 60; do
@@ -113,7 +113,7 @@ jobs:
       - name: Upload test IPA
         uses: actions/upload-artifact@v7
         with:
-          name: nuvio-test-${{ inputs.configuration || 'Release' }}-ipa-${{ github.sha }}
+          name: nuvio-test-${{ inputs.configuration || 'Debug' }}-ipa-${{ github.sha }}
           path: build/ios-ipa/*.ipa
           if-no-files-found: error
           retention-days: 7
